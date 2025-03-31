@@ -21,11 +21,19 @@ namespace SPG_Fachtheorie.Aufgabe1.Infrastructure
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                // Generic config for all entities
+                // ON DELETE RESTRICT instead of ON DELETE CASCADE
+                foreach (var key in entityType.GetForeignKeys())
+                    key.DeleteBehavior = DeleteBehavior.Restrict;
+            }
+
             // TODO: Add your configuration here
-            modelBuilder.Entity<Employee>().OwnsOne(e => e.Address);
             modelBuilder.Entity<Employee>().HasDiscriminator(e => e.Type);
             modelBuilder.Entity<Payment>().Property(p => p.PaymentType)
                 .HasConversion<string>();
+            modelBuilder.Entity<Employee>().OwnsOne(e => e.Address);
         }
 
         public void Seed()
