@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ValueGeneration.Internal;
 using SPG_Fachtheorie.Aufgabe1.Infrastructure;
 using SPG_Fachtheorie.Aufgabe1.Model;
+using SPG_Fachtheorie.Aufgabe3.Commands;
 using SPG_Fachtheorie.Aufgabe3.Dtos;
 
 namespace SPG_Fachtheorie.Aufgabe3.Controllers
@@ -59,5 +60,139 @@ namespace SPG_Fachtheorie.Aufgabe3.Controllers
             return Ok(employee);
         }
 
+        /// <summary>
+        /// Reagiert auf POST /api/manager
+        /// </summary>
+        [HttpPost("/api/manager")]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult AddManager([FromBody] NewManagerCmd cmd)
+        {
+            var employee = new Manager(
+                cmd.RegistrationNumber, cmd.FirstName, cmd.LastName,
+                cmd.Address is not null
+                    ? new Address(cmd.Address.Street, cmd.Address.Zip, cmd.Address.City)
+                    : null,
+                cmd.CarType);
+            _db.Managers.Add(employee);
+            try
+            {
+                _db.SaveChanges();  // INSERT INTO
+            }
+            catch (DbUpdateException e)
+            {
+                return Problem(
+                    e.InnerException?.Message ?? e.Message,
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            return CreatedAtAction(nameof(AddManager), new { employee.RegistrationNumber });
+        }
+
+
+        /// <summary>
+        /// DELETE /api/employee/{registrationNumber}
+        /// Löscht den Employee. Da ON DELETE RESTRICT gesetzt wurde, müssen wir alle verbundenen
+        /// Daten (Payments und PaymentItems) auch löschen.
+        /// Ob das sinnvoll ist, muss immer geprüft werden. Eine Alternative wäre ein "soft delete",
+        /// also ein Flag "visible" in Employee einfügen.
+        /// </summary>
+        [HttpDelete("{registrationNumber}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public IActionResult DeleteEmployee(int registrationNumber)
+        {
+            var employee = _db.Employees.FirstOrDefault(e => e.RegistrationNumber == registrationNumber);
+            if (employee is null) return NoContent();
+
+            var paymentItems = _db.PaymentItems
+                .Where(p => p.Payment.Employee.RegistrationNumber == registrationNumber)
+                .ToList();
+
+            var payments = _db.Payments
+                .Where(p => p.Employee.RegistrationNumber == registrationNumber)
+                .ToList();
+            try
+            {
+                _db.PaymentItems.RemoveRange(paymentItems);
+                _db.SaveChanges();
+
+                _db.Payments.RemoveRange(payments);
+                _db.SaveChanges();
+
+                _db.Employees.Remove(employee);
+                _db.SaveChanges();
+            }
+            catch (DbUpdateException e)
+            {
+                return Problem(
+                    e.InnerException?.Message ?? e.Message,
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            catch (InvalidOperationException e)
+            {
+                return Problem(
+                    e.InnerException?.Message ?? e.Message,
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+            return NoContent();
+        }
+
+        /// <summary>
+        /// PUT /api/manager/{registrationNumber}
+        /// </summary>
+        [HttpPut("/api/manager/{registrationNumber}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult UpdateManager(int registrationNumber, [FromBody] UpdateManagerCmd cmd)
+        {
+            if (registrationNumber != cmd.RegistrationNumber)
+                return Problem("Invalid registration number", statusCode: 400);
+            var manager = _db.Managers.FirstOrDefault(m=>m.RegistrationNumber == registrationNumber);
+            if (manager is null)
+                return Problem("Manager not found", statusCode: 404);
+            if (manager.LastUpdate != cmd.LastUpdate)
+                return Problem("Manager has changed", statusCode: 400);
+
+            manager.FirstName = cmd.FirstName;
+            manager.LastName = cmd.LastName;
+            manager.CarType = cmd.CarType;
+            manager.Address = cmd.Address is null
+                ? null 
+                : new Address(cmd.Address.Street, cmd.Address.Zip, cmd.Address.City);
+            manager.LastUpdate = DateTime.UtcNow;
+            try
+            {
+                _db.SaveChanges();
+            }
+            catch (DbUpdateException e)
+            {
+                return Problem(e.InnerException?.Message ?? e.Message, statusCode: 400);
+            }
+            return NoContent();
+        }
+
+
+        [HttpPatch("/api/manager/{registrationNumber}/address")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public IActionResult UpdateAddress(int registrationNumber, [FromBody] AddressCmd cmd)
+        {
+            var manager = _db.Managers.FirstOrDefault(m => m.RegistrationNumber == registrationNumber);
+            if (manager is null)
+                return Problem("Manager not found", statusCode: 404);
+
+            manager.Address = new Address(cmd.Street, cmd.Zip, cmd.City);
+            try
+            {
+                _db.SaveChanges();
+            }
+            catch (DbUpdateException e)
+            {
+                return Problem(e.InnerException?.Message ?? e.Message, statusCode: 400);
+            }
+            return NoContent();
+        }
     }
 }

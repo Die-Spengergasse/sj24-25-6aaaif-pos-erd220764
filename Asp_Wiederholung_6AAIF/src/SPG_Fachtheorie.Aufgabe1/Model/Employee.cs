@@ -31,6 +31,7 @@ namespace SPG_Fachtheorie.Aufgabe1.Model
         public DateTime? LastLogin { get; set; }
         // VORSICHT: DISCRIMINATOR!
         public string Type { get; set; } = null!;
+        public DateTime? LastUpdate { get; set; }
         public List<Payment> Payments { get; } = new();
     }
 }
