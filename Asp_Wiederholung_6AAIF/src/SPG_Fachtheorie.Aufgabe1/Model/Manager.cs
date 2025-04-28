@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace SPG_Fachtheorie.Aufgabe1.Model
 {
@@ -7,8 +8,11 @@ namespace SPG_Fachtheorie.Aufgabe1.Model
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         protected Manager() { }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-        public Manager(int registrationNumber, string firstName, string lastName,
-            Address? address, string carType) : base(registrationNumber, firstName, lastName, address)
+        public Manager(
+            int registrationNumber, string firstName, string lastName,
+            DateOnly birthday, decimal? salary, Address? address,
+            string carType)
+            : base(registrationNumber, firstName, lastName, birthday, salary, address)
         {
             CarType = carType;
         }
