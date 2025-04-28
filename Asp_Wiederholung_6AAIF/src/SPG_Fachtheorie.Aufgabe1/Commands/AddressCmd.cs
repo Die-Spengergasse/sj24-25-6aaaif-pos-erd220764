@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SPG_Fachtheorie.Aufgabe3.Commands
+namespace SPG_Fachtheorie.Aufgabe1.Commands
 {
     public record AddressCmd(
         [StringLength(255, MinimumLength = 1, ErrorMessage = "Invalid firstname")]

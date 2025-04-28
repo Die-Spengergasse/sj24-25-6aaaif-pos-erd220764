@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace SPG_Fachtheorie.Aufgabe1.Model
 {
@@ -7,7 +8,8 @@ namespace SPG_Fachtheorie.Aufgabe1.Model
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         protected PaymentItem() { }
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
-        public PaymentItem(string articleName, int amount, decimal price, Payment payment)
+        public PaymentItem(
+            string articleName, int amount, decimal price, Payment payment)
         {
             ArticleName = articleName;
             Amount = amount;
@@ -21,5 +23,6 @@ namespace SPG_Fachtheorie.Aufgabe1.Model
         public int Amount { get; set; }
         public decimal Price { get; set; }
         public Payment Payment { get; set; }
+        public DateTime? LastUpdated { get; set; }
     }
 }

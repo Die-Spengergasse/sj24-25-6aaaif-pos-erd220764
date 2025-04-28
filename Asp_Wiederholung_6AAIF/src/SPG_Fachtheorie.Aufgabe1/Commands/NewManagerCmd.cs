@@ -1,6 +1,8 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 
-namespace SPG_Fachtheorie.Aufgabe3.Commands
+namespace SPG_Fachtheorie.Aufgabe1.Commands
 {
     /*
     {
@@ -22,6 +24,9 @@ namespace SPG_Fachtheorie.Aufgabe3.Commands
         string FirstName,
         [StringLength(255, MinimumLength = 1, ErrorMessage = "Invalid firstname")]
         string LastName,
+        DateOnly Birthdate,
+        [Range(0, 1_000_000)]
+        decimal? Salary,
         AddressCmd? Address,
         [StringLength(255, MinimumLength = 1, ErrorMessage = "Invalid car type")]
         string CarType
@@ -32,7 +37,7 @@ namespace SPG_Fachtheorie.Aufgabe3.Commands
             if (FirstName.Length + LastName.Length < 3)
                 yield return new ValidationResult(
                     "Invalid name",
-                    new string[] {nameof(FirstName), nameof(LastName)});
+                    new string[] { nameof(FirstName), nameof(LastName) });
         }
     }
 }

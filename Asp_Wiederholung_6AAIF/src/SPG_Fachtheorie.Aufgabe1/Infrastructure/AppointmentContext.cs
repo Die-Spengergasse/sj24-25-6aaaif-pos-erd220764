@@ -30,10 +30,10 @@ namespace SPG_Fachtheorie.Aufgabe1.Infrastructure
             }
 
             // TODO: Add your configuration here
+            modelBuilder.Entity<Employee>().OwnsOne(e => e.Address);
             modelBuilder.Entity<Employee>().HasDiscriminator(e => e.Type);
             modelBuilder.Entity<Payment>().Property(p => p.PaymentType)
                 .HasConversion<string>();
-            modelBuilder.Entity<Employee>().OwnsOne(e => e.Address);
         }
 
         public void Seed()
@@ -46,11 +46,14 @@ namespace SPG_Fachtheorie.Aufgabe1.Infrastructure
                     return new Cashier(
                         registrationNumber++,
                         f.Name.FirstName(), f.Name.LastName(),
+                        f.Date.BetweenDateOnly(new DateOnly(1970, 1, 1), new DateOnly(2008, 1, 1)),
+                        f.Random.Int(2000, 4000).OrNull(f, 0.5f),
                         new Address(
                             f.Address.StreetName(), f.Random.Int(1000, 9999).ToString(), f.Address.City()),
                         f.Lorem.Sentence(2))
-                    { LastLogin = f.Date.Between(new DateTime(2024, 1, 1), new DateTime(2025, 1, 1))
-                        .OrNull(f, 0.5f) 
+                    {
+                        LastLogin = f.Date.Between(new DateTime(2024, 1, 1), new DateTime(2025, 1, 1))
+                        .OrNull(f, 0.5f)
                     };
                 })
                 .Generate(10)
@@ -64,6 +67,8 @@ namespace SPG_Fachtheorie.Aufgabe1.Infrastructure
                     return new Manager(
                         registrationNumber++,
                         f.Name.FirstName(), f.Name.LastName(),
+                        f.Date.BetweenDateOnly(new DateOnly(1970, 1, 1), new DateOnly(2008, 1, 1)),
+                        f.Random.Int(2000, 4000).OrNull(f, 0.5f),
                         new Address(
                             f.Address.StreetName(), f.Random.Int(1000, 9999).ToString(), f.Address.City()),
                         f.Commerce.ProductAdjective())
@@ -77,8 +82,8 @@ namespace SPG_Fachtheorie.Aufgabe1.Infrastructure
             Managers.AddRange(managers);
             SaveChanges();
 
-            var cashDesks = Enumerable.Range(1,5)
-                .Select(i=>new CashDesk(i)).ToList();
+            var cashDesks = Enumerable.Range(1, 5)
+                .Select(i => new CashDesk(i)).ToList();
             CashDesks.AddRange(cashDesks);
             SaveChanges();
 
