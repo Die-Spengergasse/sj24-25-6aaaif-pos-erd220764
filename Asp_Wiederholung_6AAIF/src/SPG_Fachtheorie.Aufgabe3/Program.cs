@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using SPG_Fachtheorie.Aufgabe1.Infrastructure;
+using SPG_Fachtheorie.Aufgabe1.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Suche im Programmcode nach allen Klassen mit [ApiController]
 builder.Services.AddControllers();
+builder.Services.AddScoped<EmployeeService>();
 // SERVICE PROVIDER
 // Stellt konfigurierte Instanzen von Klassen bereit
 builder.Services.AddDbContext<AppointmentContext>(opt =>

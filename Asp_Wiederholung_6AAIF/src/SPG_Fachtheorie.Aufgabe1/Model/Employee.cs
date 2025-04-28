@@ -12,12 +12,14 @@ namespace SPG_Fachtheorie.Aufgabe1.Model
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider adding the 'required' modifier or declaring as nullable.
         public Employee(
             int registrationNumber, string firstName, string lastName,
-            Address? address)
+            DateOnly birthday, decimal? salary, Address? address)
         {
             RegistrationNumber = registrationNumber;
             FirstName = firstName;
             LastName = lastName;
             Address = address;
+            Birthday = birthday;
+            Salary = salary;
         }
 
         [Key]
@@ -27,6 +29,8 @@ namespace SPG_Fachtheorie.Aufgabe1.Model
         public string FirstName { get; set; }
         [MaxLength(255)]
         public string LastName { get; set; }
+        public DateOnly Birthday { get; set; }
+        public decimal? Salary { get; set; }
         public Address? Address { get; set; }
         public DateTime? LastLogin { get; set; }
         // VORSICHT: DISCRIMINATOR!
