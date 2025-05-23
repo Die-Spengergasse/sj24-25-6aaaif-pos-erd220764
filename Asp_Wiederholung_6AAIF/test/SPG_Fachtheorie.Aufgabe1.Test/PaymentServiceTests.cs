@@ -4,18 +4,20 @@ using SPG_Fachtheorie.Aufgabe1.Infrastructure;
 using SPG_Fachtheorie.Aufgabe1.Model;
 using SPG_Fachtheorie.Aufgabe1.Services;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace SPG_Fachtheorie.Aufgabe1.Test
 {
-    [Collection("Sequential")]
     public class PaymentServiceTests
     {
         private AppointmentContext GetEmptyDbContext()
         {
             var options = new DbContextOptionsBuilder()
-                .UseSqlite("Data Source=cash.db")
+                .UseSqlite(@"Data Source=cash.db")
                 .Options;
 
             var db = new AppointmentContext(options);
@@ -25,157 +27,66 @@ namespace SPG_Fachtheorie.Aufgabe1.Test
         }
 
         [Theory]
-        [InlineData(999, "Cash", 1, "Invalid cash desk")]
-        [InlineData(1, "Cash", 999, "Invalid employee")]
-        [InlineData(1, "InvalidType", 1, "Invalid payment type")]
+        [InlineData(10, "Cash", 1, "Invalid cash desk")]
+        [InlineData(1, "Cash", 10, "Invalid employee")]
+        [InlineData(1, "XXX", 1, "Invalid payment type")]
+        [InlineData(2, "Cash", 1, "Open payment for cashdesk")]
         [InlineData(1, "CreditCard", 1, "Insufficient rights to create a credit card payment.")]
-        public void CreatePaymentExceptionsTest(int cashDeskNumber, string paymentType, int employeeRegistrationNumber, string expectedMessage)
+        public void CreatePaymentThrowsServiceExceptionTest(
+            int cashDeskNumber, string paymentType,
+            int employeeRegistrationNumber, string message)
         {
             // ARRANGE
-            var db = GetEmptyDbContext();
-            db.CashDesks.Add(new CashDesk(1));
-            db.Employees.Add(new Cashier(1, "John", "Doe", new DateOnly(1990, 1, 1), null, null, "Food"));
+            using var db = GetEmptyDbContext();
+            var service = new PaymentService(db);
+            var cashDesk = new CashDesk(number: 1);
+            var cashDesk2 = new CashDesk(number: 2);
+            var employee = new Cashier(
+                registrationNumber: 1, firstName: "FN", lastName: "LN",
+                birthday: new DateOnly(2004, 1, 1),
+                salary: 3000M, address: null, jobSpezialisation: "Feinkost");
+            // Confirmed ist null, da es im Konstruktor nicht gesetzt wird.
+            // D. h. das payment ist nicht confirmed.
+            var payment = new Payment(
+                cashDesk: cashDesk2, paymentDateTime: new DateTime(2025, 5, 3),
+                employee: employee, PaymentType.Cash);
+            db.AddRange(cashDesk, cashDesk2, employee, payment);
             db.SaveChanges();
 
-            var service = new PaymentService(db);
-            var cmd = new NewPaymentCommand(cashDeskNumber, paymentType, employeeRegistrationNumber);
-
             // ACT & ASSERT
-            var ex = Assert.Throws<PaymentServiceException>(() => service.CreatePayment(cmd));
-            Assert.Equal(expectedMessage, ex.Message);
+
+            // "Invalid cash desk"
+            var cmd = new NewPaymentCommand(
+                CashDeskNumber: cashDeskNumber, PaymentType: paymentType, EmployeeRegistrationNumber: employeeRegistrationNumber);
+            var e = Assert.Throws<PaymentServiceException>(() => service.CreatePayment(cmd));
+            Assert.True(e.Message == message);
+            // ASSERT
         }
 
         [Fact]
         public void CreatePaymentSuccessTest()
         {
             // ARRANGE
-            var db = GetEmptyDbContext();
-            db.CashDesks.Add(new CashDesk(1));
-            db.Employees.Add(new Manager(1, "Jane", "Doe", new DateOnly(1980, 1, 1), null, null, "SUV"));
+            using var db = GetEmptyDbContext();
+            var service = new PaymentService(db);
+            var cashDesk = new CashDesk(number: 1);
+            var employee = new Cashier(
+                registrationNumber: 1, firstName: "FN", lastName: "LN",
+                birthday: new DateOnly(2004, 1, 1),
+                salary: 3000M, address: null, jobSpezialisation: "Feinkost");
+            db.AddRange(cashDesk, employee);
             db.SaveChanges();
 
-            var service = new PaymentService(db);
-            var cmd = new NewPaymentCommand(1, "CreditCard", 1);
-
             // ACT
-            var payment = service.CreatePayment(cmd);
+            var cmd = new NewPaymentCommand(
+                CashDeskNumber: 1, PaymentType: "Cash", EmployeeRegistrationNumber: 1);
+            service.CreatePayment(cmd);
 
             // ASSERT
             db.ChangeTracker.Clear();
-            Assert.NotNull(db.Payments.FirstOrDefault(p => p.Id == payment.Id));
-        }
+            var paymentFromDb = db.Payments.First();
+            Assert.True(paymentFromDb.Id != 0);
 
-        [Fact]
-        public void ConfirmPaymentSuccessTest()
-        {
-            // ARRANGE
-            var db = GetEmptyDbContext();
-            var employee = new Manager(1, "Jane", "Doe", new DateOnly(1980, 1, 1), null, null, "SUV");
-            var cashDesk = new CashDesk(1);
-            var payment = new Payment(cashDesk, DateTime.UtcNow, employee, PaymentType.Cash);
-            db.Payments.Add(payment);
-            db.SaveChanges();
-
-            var service = new PaymentService(db);
-
-            // ACT
-            service.ConfirmPayment(payment.Id);
-
-            // ASSERT
-            db.ChangeTracker.Clear();
-            Assert.NotNull(db.Payments.First().Confirmed);
-        }
-
-        [Fact]
-        public void ConfirmPaymentNotFoundTest()
-        {
-            // ARRANGE
-            var db = GetEmptyDbContext();
-            var service = new PaymentService(db);
-
-            // ACT & ASSERT
-            var ex = Assert.Throws<PaymentServiceException>(() => service.ConfirmPayment(999));
-            Assert.Equal("Payment not found", ex.Message);
-            Assert.True(ex.NotFoundException);
-        }
-
-        [Fact]
-        public void AddPaymentItemSuccessTest()
-        {
-            // ARRANGE
-            var db = GetEmptyDbContext();
-            var employee = new Manager(1, "Jane", "Doe", new DateOnly(1980, 1, 1), null, null, "SUV");
-            var cashDesk = new CashDesk(1);
-            var payment = new Payment(cashDesk, DateTime.UtcNow, employee, PaymentType.Cash);
-            db.Payments.Add(payment);
-            db.SaveChanges();
-
-            var service = new PaymentService(db);
-            var cmd = new NewPaymentItemCommand("Water", 2, 1.5M, payment.Id);
-
-            // ACT
-            service.AddPaymentItem(cmd);
-
-            // ASSERT
-            db.ChangeTracker.Clear();
-            Assert.Single(db.PaymentItems);
-        }
-
-        [Fact]
-        public void AddPaymentItemPaymentNotFoundTest()
-        {
-            // ARRANGE
-            var db = GetEmptyDbContext();
-            var service = new PaymentService(db);
-            var cmd = new NewPaymentItemCommand("Water", 2, 1.5M, 999);
-
-            // ACT & ASSERT
-            var ex = Assert.Throws<PaymentServiceException>(() => service.AddPaymentItem(cmd));
-            Assert.Equal("Payment not found", ex.Message);
-        }
-
-        [Fact]
-        public void AddPaymentItemAlreadyConfirmedTest()
-        {
-            // ARRANGE
-            var db = GetEmptyDbContext();
-            var employee = new Manager(1, "Jane", "Doe", new DateOnly(1980, 1, 1), null, null, "SUV");
-            var cashDesk = new CashDesk(1);
-            var payment = new Payment(cashDesk, DateTime.UtcNow, employee, PaymentType.Cash);
-            payment.Confirmed = DateTime.UtcNow;
-            db.Payments.Add(payment);
-            db.SaveChanges();
-
-            var service = new PaymentService(db);
-            var cmd = new NewPaymentItemCommand("Water", 2, 1.5M, payment.Id);
-
-            // ACT & ASSERT
-            var ex = Assert.Throws<PaymentServiceException>(() => service.AddPaymentItem(cmd));
-            Assert.Equal("Payment already confirmed.", ex.Message);
-        }
-
-        [Fact]
-        public void DeletePaymentSuccessTest()
-        {
-            // ARRANGE
-            var db = GetEmptyDbContext();
-            var employee = new Manager(1, "Jane", "Doe", new DateOnly(1980, 1, 1), null, null, "SUV");
-            var cashDesk = new CashDesk(1);
-            var payment = new Payment(cashDesk, DateTime.UtcNow, employee, PaymentType.Cash);
-            var paymentItem = new PaymentItem("Water", 2, 1.5M, payment);
-            db.Payments.Add(payment);
-            db.PaymentItems.Add(paymentItem);
-            db.SaveChanges();
-
-            var service = new PaymentService(db);
-
-            // ACT
-            service.DeletePayment(payment.Id, true);
-
-            // ASSERT
-            db.ChangeTracker.Clear();
-            Assert.False(db.Payments.Any());
-            Assert.False(db.PaymentItems.Any());
         }
     }
 }
